@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invigilator Timesheet Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.1; 
+            color: #333; 
+            max-width: 850px; 
+            margin: 2px auto; 
+            padding: 5px; 
+            background-color: #1a252f; 
+        }
+
+        /* --- DARK MODE UI STYLES --- */
+        .timesheet-container { 
+            background: #2c3e50; 
+            color: #ecf0f1; 
+            padding: 15px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+            border-top: 4px solid #3498db; 
+            min-height: auto; 
+            transition: background 0.3s;
+        }
+        
+        h1 { 
+            text-align: center; 
+            color: #ecf0f1; 
+            text-transform: uppercase; 
+            border-bottom: 1px solid #7f8c8d; 
+            padding-bottom: 2px; 
+            margin-bottom: 5px; 
+            font-size: 1.1em; 
+            letter-spacing: 1px; 
+        }
+        
+        .top-info label, .auth-section label, .sig-section label { 
+            display: block; 
+            font-weight: bold; 
+            margin-bottom: 1px; 
+            font-size: 0.65em; 
+            color: #bdc3c7; 
+            text-transform: uppercase; 
+        }
+        
+        input, select, textarea { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+            padding: 4px; 
+            border: 1px solid #bdc3c7; 
+            border-radius: 3px; 
+            font-size: 0.85em; 
+            width: 100%; 
+            box-sizing: border-box; 
+            color: #2c3e50;
+            background-color: #fdfdfd; 
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        }
+
+        .total-hours-box { 
+            border: 2px solid #e74c3c !important; 
+            font-weight: bold; 
+            text-align: center; 
+            color: #c0392b; 
+            font-size: 1em !important;
+            padding: 2px !important;
+            background-color: #fff !important;
+        }
+
+        .signature-wrapper { 
+            position: relative; 
+            border: 1px solid #bdc3c7; 
+            border-radius: 3px; 
+            background: #fff; 
+            height: 30px; 
+            width: 100%; 
+            box-sizing: border-box; 
+        }
+        
+        .sig-type-input { 
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+            background: transparent; 
+            font-family: 'Caveat', cursive !important; 
+            font-size: 1.3em; 
+            padding: 2px 8px; 
+            box-sizing: border-box; 
+            color: #000;
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 3px; font-size: 0.95em; table-layout: fixed; }
+        
+        th, td { 
+            border: 1px solid #555; 
+            padding: 1.5px 2px; 
+            vertical-align: middle; 
+            text-align: center; 
+            height: auto;
+        }
+        
+        th { 
+            background-color: #34495e; 
+            font-weight: 700; 
+            color: #ecf0f1; 
+            font-size: 0.75em; 
+            text-transform: uppercase; 
+            padding: 4px 2px; 
+        }
+
+        .grid-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+        
+        .col-date { width: 105px; }
+        .col-time { width: 85px; } 
+        .col-lead { width: 45px; }
+        .col-break { width: 85px; } 
+        .col-total-row { width: 70px; }
+        .col-action { width: 25px; }
+        .col-reason { width: auto; text-align: left; } 
+
+        .row-total { 
+            font-weight: bold; 
+            border: none !important; 
+            background: transparent !important; 
+            color: #ecf0f1; 
+            font-size: 0.95em !important; 
+            box-shadow: none !important;
+        }
+        
+        .auth-section { 
+            margin-top: 5px; 
+            padding: 8px 10px;
+            background-color: #34495e; 
+            border-radius: 4px;
+            border: 1px solid #465c71;
+        }
+        .auth-section h4 { 
+            margin: 0 0 6px 0; 
+            font-size: 0.7em; 
+            color: #bdc3c7; 
+            text-transform: uppercase; 
+            border-bottom: 1px solid #555; 
+            padding-bottom: 2px; 
+        }
+        
+        .auth-section input, 
+        .auth-section .signature-wrapper.locked { 
+            background-color: #95a5a6 !important; 
+            color: #2c3e50;
+            border: 1px solid #7f8c8d;
+        }
+
+        .add-btn { background-color: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-top: 5px; font-size: 0.75em; font-weight: 600; font-family: inherit; }
+        .download-btn { background-color: #27ae60; color: white; border: none; padding: 10px 30px; border-radius: 6px; cursor: pointer; font-size: 1em; font-weight: bold; display: block; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-family: inherit; }
+        
+        .no-export { display: none !important; }
+
+        /* --- PRINT MODE (INK FRIENDLY + GREY AUTH) --- */
+        .print-mode {
+            background-color: white !important;
+            color: #333 !important;
+            border-top: 4px solid #2c3e50 !important;
+            box-shadow: none !important;
+        }
+        .print-mode h1 { color: #2c3e50 !important; border-bottom: 1px solid #eee !important; }
+        .print-mode label { color: #666 !important; }
+        .print-mode th { background-color: #f8f9fa !important; color: #2c3e50 !important; border: 1.2px solid #777 !important; }
+        .print-mode td { border: 1.2px solid #777 !important; }
+        .print-mode .row-total { color: #2c3e50 !important; }
+        
+        /* Auth Section Print Overrides - UNIFORM GREY */
+        .print-mode .auth-section { 
+            background-color: #e0e0e0 !important; /* Page Grey Background */
+            border: 1px solid #bdc3c7 !important; 
+            color: #333 !important;
+        }
+        .print-mode .auth-section h4 { 
+            color: #444 !important; 
+            border-bottom: 1px solid #999 !important; 
+        }
+        .print-mode .auth-section input,
+        .print-mode .auth-section .signature-wrapper,
+        .print-mode .auth-section .pdf-input-box { 
+            background-color: #e0e0e0 !important; /* Page Grey Inputs */
+            border: 1px solid #999 !important;
+            color: #333 !important;
+        }
+
+        .pdf-input-box {
+            border: 1px solid #bdc3c7;
+            border-radius: 3px;
+            padding: 4px;
+            background-color: #fff;
+            min-height: 23px;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 0.85em;
+            line-height: 1.1;
+            font-family: inherit;
+            color: #333; 
+        }
+        .pdf-text-simple { display: block; width: 100%; line-height: 1.2; font-family: inherit; text-align: center; font-size: 0.9em; padding: 1px 0; color: #000; }
+        .pdf-text-reason { display: block; width: 100%; line-height: 1.2; font-family: inherit; text-align: left; font-size: 0.85em; padding: 1px 0; color: #000; }
+        .pdf-v-center { display: flex; align-items: center; justify-content: center; min-height: 18px; }
+        .pdf-v-left { display: flex; align-items: center; justify-content: flex-start; min-height: 18px; }
+    </style>
+</head>
+<body onload="loadDraft()">
+
+<datalist id="intervals">
+    <option value="07:00"> <option value="07:15"> <option value="07:30"> <option value="07:45">
+    <option value="08:00"> <option value="08:15"> <option value="08:30"> <option value="08:45">
+    <option value="09:00"> <option value="09:15"> <option value="09:30"> <option value="09:45">
+    <option value="10:00"> <option value="10:15"> <option value="10:30"> <option value="10:45">
+    <option value="11:00"> <option value="11:15"> <option value="11:30"> <option value="11:45">
+    <option value="12:00"> <option value="12:15"> <option value="12:30"> <option value="12:45">
+    <option value="13:00"> <option value="13:15"> <option value="13:30"> <option value="13:45">
+    <option value="14:00"> <option value="14:15"> <option value="14:30"> <option value="14:45">
+    <option value="15:00"> <option value="15:15"> <option value="15:30"> <option value="15:45">
+    <option value="16:00"> <option value="16:15"> <option value="16:30"> <option value="16:45">
+    <option value="17:00"> <option value="17:15"> <option value="17:30"> <option value="17:45">
+    <option value="18:00">
+</datalist>
+
+<div id="content-to-export">
+    <div class="timesheet-container" id="ts-container">
+        <h1>Invigilator Timesheet</h1>
+
+        <div class="section top-info">
+            <div class="grid-row">
+                <div>
+                    <label>Initials & Surname*</label>
+                    <div style="display:flex; gap:3px;">
+                        <input type="text" id="userInitials" style="width:15%" oninput="saveDraft()">
+                        <input type="text" id="userSurname" style="width:85%" oninput="saveDraft()">
+                    </div>
+                </div>
+                <div><label>Payroll Number</label><input type="text" id="payrollNumber" oninput="saveDraft()"></div>
+            </div>
+            
+            <div class="grid-row">
+                <div><label>Job Title</label><input type="text" value="Invigilator" readonly></div>
+                <div>
+                    <label>Submission Date*</label>
+                    <input type="date" id="submissionDate" oninput="saveDraft()">
+                </div>
+            </div>
+
+            <div class="grid-row" style="margin-bottom:10px;">
+                <div><label>Work Establishment</label>
+                    <input type="text" value="School" readonly>
+                </div>
+                <div>
+                    <label>Total Hours Worked</label>
+                    <input type="number" id="grandTotal" step="0.01" readonly value="0.00" class="total-hours-box">
+                </div>
+            </div>
+        </div>
+
+        <div class="section sig-section">
+            <div class="grid-row" style="grid-template-columns: 1fr 1fr;">
+                <div>
+                    <label>Signature of Claimant*</label>
+                    <div class="signature-wrapper">
+                        <input type="text" class="sig-type-input" id="claimant-type" placeholder="Type name here..." oninput="saveDraft()">
+                    </div>
+                </div>
+                <div></div>
+            </div>
+        </div>
+
+        <div class="section auth-section">
+            <h4>Authorisation (Office Use Only)</h4>
+            <div class="grid-row" style="grid-template-columns: 1fr 1fr;">
+                <div>
+                    <label>Signed (Exams Officer)</label>
+                    <div class="signature-wrapper locked"></div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label>Print Name</label>
+                        <input type="text" value="NAME" readonly style="height: 30px;">
+                    </div>
+                    <div>
+                        <label>Date</label>
+                        <input type="text" readonly style="height: 30px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" style="margin-top:10px;">
+            <table id="timesheetTable">
+                <thead>
+                    <tr>
+                        <th class="col-date">Date</th>
+                        <th class="col-time">From</th>
+                        <th class="col-time">To</th>
+                        <th class="col-lead">Lead</th>
+                        <th class="col-break">BREAK (MINS)</th>
+                        <th class="col-reason">Reason for Claim</th>
+                        <th class="col-total-row">Total</th>
+                        <th class="col-action no-print-item"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><input type="date" class="row-date" oninput="saveDraft()"></td>
+                        <td><input type="time" list="intervals" class="time-from" oninput="calculate(); saveDraft()"></td>
+                        <td><input type="time" list="intervals" class="time-to" oninput="calculate(); saveDraft()"></td>
+                        <td><input type="checkbox" class="is-lead" onchange="calculate(); saveDraft()"></td>
+                        <td><input type="number" class="break-mins" placeholder="0" oninput="calculate(); saveDraft()"></td>
+                        <td class="col-reason">
+                            <select class="reason-select" onchange="toggleSpecify(this); saveDraft()">
+                                <option value="" disabled selected>Select...</option>
+                                <option value="GCSEs">GCSEs</option>
+                                <option value="Year 11 Mocks">Year 11 Mocks</option>
+                                <option value="Year 10 Exams">Year 10 Exams</option>
+                                <option value="MFL Speaking">MFL Speaking</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <input type="text" class="specify-box" style="display:none; margin-top:1px;" placeholder="Specify..." oninput="saveDraft()">
+                        </td>
+                        <td><input type="number" class="row-total" step="0.01" readonly value="0.00"></td>
+                        <td class="no-print-item"><button type="button" style="color:#e74c3c; border:none; background:none; cursor:pointer; font-weight:bold;" onclick="this.closest('tr').remove(); calculate(); saveDraft()">✖</button></td>
+                    </tr>
+                </tbody>
+            </table>
+            <button type="button" class="add-btn no-print-item" onclick="addRow()">+ Add Row</button>
+        </div>
+    </div>
+</div>
+
+<div style="display: flex; gap: 10px; justify-content: center; margin: 20px auto; max-width: 850px;">
+    <button type="button" class="download-btn" style="margin: 0;" onclick="downloadPDF()">Download PDF</button>
+    <button type="button" class="download-btn" style="margin: 0; background-color: #e67e22;" onclick="clearForm()">Clear Form</button>
+</div>
+
+<script>
+    function formatCustomDate(dateStr) {
+        if (!dateStr) return "";
+        const date = new Date(dateStr);
+        return `${String(date.getDate()).padStart(2, '0')}-${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.getMonth()]}-${String(date.getFullYear()).slice(-2)}`;
+    }
+
+    function saveDraft() {
+        const rows = [];
+        document.querySelectorAll('#timesheetTable tbody tr').forEach(row => {
+            rows.push({
+                date: row.querySelector('.row-date').value,
+                from: row.querySelector('.time-from').value,
+                to: row.querySelector('.time-to').value,
+                isLead: row.querySelector('.is-lead').checked,
+                breakMins: row.querySelector('.break-mins').value,
+                reason: row.querySelector('.reason-select').value,
+                specify: row.querySelector('.specify-box').value
+            });
+        });
+
+        const draftData = {
+            initials: document.getElementById('userInitials').value,
+            surname: document.getElementById('userSurname').value,
+            payroll: document.getElementById('payrollNumber').value,
+            submissionDate: document.getElementById('submissionDate').value,
+            signature: document.getElementById('claimant-type').value,
+            rows: rows
+        };
+        localStorage.setItem('invigilator_timesheet_draft', JSON.stringify(draftData));
+    }
+
+    function loadDraft() {
+        const savedData = localStorage.getItem('invigilator_timesheet_draft');
+        if (!savedData) return;
+
+        const data = JSON.parse(savedData);
+        document.getElementById('userInitials').value = data.initials || "";
+        document.getElementById('userSurname').value = data.surname || "";
+        document.getElementById('payrollNumber').value = data.payroll || "";
+        document.getElementById('submissionDate').value = data.submissionDate || "";
+        document.getElementById('claimant-type').value = data.signature || "";
+
+        const tbody = document.querySelector('#timesheetTable tbody');
+        tbody.innerHTML = ''; 
+
+        if (data.rows && data.rows.length > 0) {
+            data.rows.forEach(rowData => {
+                addRow(rowData);
+            });
+        } else {
+            addRow(); 
+        }
+        calculate();
+    }
+
+    function clearForm() {
+        if (confirm("Are you sure you want to clear the entire form? This will delete your draft.")) {
+            localStorage.removeItem('invigilator_timesheet_draft');
+            location.reload();
+        }
+    }
+
+    function downloadPDF() {
+        const initials = document.getElementById('userInitials').value.trim();
+        const surname = document.getElementById('userSurname').value.trim();
+        const subDate = document.getElementById('submissionDate').value;
+        const signature = document.getElementById('claimant-type').value.trim();
+
+        if (!initials || !surname || !subDate || !signature) {
+            alert("Please complete all required fields marked with an asterisk (*).");
+            return;
+        }
+
+        const container = document.getElementById('content-to-export');
+        const tsContainer = document.getElementById('ts-container');
+        
+        // --- 1. ACTIVATE PRINT MODE ---
+        tsContainer.classList.add('print-mode');
+
+        const originalState = [];
+
+        // Prepare DOM for PDF
+        container.querySelectorAll('input, select, textarea').forEach(el => {
+            if (window.getComputedStyle(el).display === 'none') return;
+            originalState.push({ element: el, display: el.style.display });
+            
+            let textValue = el.value;
+            if (el.type === 'checkbox') {
+                textValue = el.checked ? '✔' : '';
+            } else if (el.tagName === 'SELECT') {
+                textValue = el.selectedIndex >= 0 ? el.options[el.selectedIndex].text : "";
+                if(textValue === "Select...") textValue = "";
+            } else if (el.type === 'date') {
+                textValue = formatCustomDate(el.value);
+            }
+
+            const wrapper = document.createElement('div');
+            wrapper.innerText = textValue;
+            
+            if (el.closest('.top-info') || el.closest('.auth-section')) {
+                wrapper.classList.add('pdf-input-box');
+                if (el.style.width) wrapper.style.width = el.style.width;
+                
+                // Force Auth Section input fields to Grey
+                if (el.closest('.auth-section')) {
+                    wrapper.style.backgroundColor = "#e0e0e0"; 
+                }
+                
+                if (el.classList.contains('total-hours-box')) wrapper.classList.add('total-hours-box');
+            } else if (el.id === 'claimant-type') {
+                wrapper.style.fontFamily = "'Caveat', cursive";
+                wrapper.style.fontSize = "1.3em";
+                wrapper.style.paddingLeft = "8px";
+            } else {
+                if (el.closest('.col-reason')) {
+                    wrapper.className = 'pdf-text-reason pdf-v-left';
+                } else {
+                    wrapper.className = 'pdf-text-simple pdf-v-center';
+                }
+            }
+
+            el.parentNode.insertBefore(wrapper, el);
+            el.style.display = 'none';
+            originalState.push({ element: wrapper, isTemporary: true });
+        });
+
+        document.querySelectorAll('.no-print-item').forEach(el => el.classList.add('no-export'));
+
+        const opt = {
+            margin: [5, 5, 5, 5],
+            filename: `Timesheet_${surname}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        // Generate PDF
+        html2pdf().set(opt).from(container).save().then(() => {
+            // Restore original state
+            originalState.forEach(item => {
+                if (item.isTemporary) item.element.remove();
+                else item.element.style.display = item.display;
+            });
+            document.querySelectorAll('.no-export').forEach(el => el.classList.remove('no-export'));
+            
+            // --- 2. DEACTIVATE PRINT MODE ---
+            tsContainer.classList.remove('print-mode');
+        });
+    }
+
+    function toggleSpecify(selectElement) {
+        const specifyBox = selectElement.parentElement.querySelector('.specify-box');
+        specifyBox.style.display = (selectElement.value === 'Other') ? 'block' : 'none';
+    }
+
+    function addRow(data = null) {
+        const table = document.getElementById('timesheetTable').getElementsByTagName('tbody')[0];
+        const newRow = table.insertRow();
+        newRow.innerHTML = `
+            <td><input type="date" class="row-date" oninput="saveDraft()"></td>
+            <td><input type="time" list="intervals" class="time-from" oninput="calculate(); saveDraft()"></td>
+            <td><input type="time" list="intervals" class="time-to" oninput="calculate(); saveDraft()"></td>
+            <td><input type="checkbox" class="is-lead" onchange="calculate(); saveDraft()"></td>
+            <td><input type="number" class="break-mins" placeholder="0" oninput="calculate(); saveDraft()"></td>
+            <td class="col-reason">
+                <select class="reason-select" onchange="toggleSpecify(this); saveDraft()">
+                    <option value="" disabled selected>Select...</option>
+                    <option value="GCSEs">GCSEs</option>
+                    <option value="Year 11 Mocks">Year 11 Mocks</option>
+                    <option value="Year 10 Exams">Year 10 Exams</option>
+                    <option value="MFL Speaking">MFL Speaking</option>
+                    <option value="Other">Other</option>
+                </select>
+                <input type="text" class="specify-box" style="display:none; margin-top:1px;" placeholder="Specify..." oninput="saveDraft()">
+            </td>
+            <td><input type="number" class="row-total" step="0.01" readonly value="0.00"></td>
+            <td class="no-print-item"><button type="button" style="color:#e74c3c; border:none; background:none; cursor:pointer; font-weight:bold;" onclick="this.closest('tr').remove(); calculate(); saveDraft()">✖</button></td>
+        `;
+
+        if (data) {
+            newRow.querySelector('.row-date').value = data.date || "";
+            newRow.querySelector('.time-from').value = data.from || "";
+            newRow.querySelector('.time-to').value = data.to || "";
+            newRow.querySelector('.is-lead').checked = data.isLead || false;
+            newRow.querySelector('.break-mins').value = data.breakMins || "";
+            const select = newRow.querySelector('.reason-select');
+            select.value = data.reason || "";
+            const specify = newRow.querySelector('.specify-box');
+            specify.value = data.specify || "";
+            if (data.reason === 'Other') specify.style.display = 'block';
+        }
+    }
+
+    function calculate() {
+        let grandTotal = 0;
+        document.querySelectorAll('#timesheetTable tbody tr').forEach(row => {
+            const start = row.querySelector('.time-from').value;
+            const end = row.querySelector('.time-to').value;
+            const isLead = row.querySelector('.is-lead').checked;
+            const breakMins = parseFloat(row.querySelector('.break-mins').value) || 0;
+            if (start && end) {
+                let diff = (new Date(`1970-01-01T${end}:00`) - new Date(`1970-01-01T${start}:00`)) / 3600000;
+                if (diff < 0) diff += 24;
+                let netHours = Math.max(0, diff - (breakMins / 60) + (isLead ? 1 : 0));
+                row.querySelector('.row-total').value = netHours.toFixed(2);
+                grandTotal += netHours;
+            }
+        });
+        document.getElementById('grandTotal').value = grandTotal.toFixed(2);
+    }
+</script>
+</body>
+</html>

@@ -181,7 +181,7 @@
         
         /* Auth Section Print Overrides - UNIFORM GREY */
         .print-mode .auth-section { 
-            background-color: #e0e0e0 !important; /* Page Grey Background */
+            background-color: #e0e0e0 !important; 
             border: 1px solid #bdc3c7 !important; 
             color: #333 !important;
         }
@@ -192,7 +192,7 @@
         .print-mode .auth-section input,
         .print-mode .auth-section .signature-wrapper,
         .print-mode .auth-section .pdf-input-box { 
-            background-color: #e0e0e0 !important; /* Page Grey Inputs */
+            background-color: #e0e0e0 !important; 
             border: 1px solid #999 !important;
             color: #333 !important;
         }
@@ -241,13 +241,10 @@
         <div class="section top-info">
             <div class="grid-row">
                 <div>
-                    <label>Initials & Surname*</label>
-                    <div style="display:flex; gap:3px;">
-                        <input type="text" id="userInitials" style="width:15%" oninput="saveDraft()">
-                        <input type="text" id="userSurname" style="width:85%" oninput="saveDraft()">
-                    </div>
+                    <label>Full Name*</label>
+                    <input type="text" id="userName" placeholder="Initials & Surname" oninput="saveDraft()">
                 </div>
-                <div><label>Payroll Number</label><input type="text" id="payrollNumber" oninput="saveDraft()"></div>
+                <div><label>Payroll Number (optional)</label><input type="text" id="payrollNumber" oninput="saveDraft()"></div>
             </div>
             
             <div class="grid-row">
@@ -263,7 +260,7 @@
                     <input type="text" value="Blatchington Mill School" readonly>
                 </div>
                 <div>
-                    <label>Total Hours Worked</label>
+                    <label>Total Hours Worked (AUTOMATICALLY CALCULATED)</label>
                     <input type="number" id="grandTotal" step="0.01" readonly value="0.00" class="total-hours-box">
                 </div>
             </div>
@@ -274,7 +271,7 @@
                 <div>
                     <label>Signature of Claimant*</label>
                     <div class="signature-wrapper">
-                        <input type="text" class="sig-type-input" id="claimant-type" placeholder="Type name here..." oninput="saveDraft()">
+                        <input type="text" class="sig-type-input" id="claimant-type" placeholder="Type your name here..." oninput="saveDraft()">
                     </div>
                 </div>
                 <div></div>
@@ -318,10 +315,11 @@
                 <tbody>
                     <tr>
                         <td><input type="date" class="row-date" oninput="saveDraft()"></td>
-                        <td><input type="time" list="intervals" class="time-from" oninput="calculate(); saveDraft()"></td>
-                        <td><input type="time" list="intervals" class="time-to" oninput="calculate(); saveDraft()"></td>
+                        <td><input type="time" list="intervals" step="900" class="time-from time-validation" onblur="validateTime(this); calculate(); saveDraft()"></td>
+                        <td><input type="time" list="intervals" step="900" class="time-to time-validation" onblur="validateTime(this); calculate(); saveDraft()"></td>
+                        
                         <td><input type="checkbox" class="is-lead" onchange="calculate(); saveDraft()"></td>
-                        <td><input type="number" class="break-mins" placeholder="0" oninput="calculate(); saveDraft()"></td>
+                        <td><input type="number" class="break-mins" min="0" max="60" step="15" placeholder="0" onchange="validateBreak(this); calculate(); saveDraft()"></td>
                         <td class="col-reason">
                             <select class="reason-select" onchange="toggleSpecify(this); saveDraft()">
                                 <option value="" disabled selected>Select...</option>
@@ -355,7 +353,56 @@
         return `${String(date.getDate()).padStart(2, '0')}-${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.getMonth()]}-${String(date.getFullYear()).slice(-2)}`;
     }
 
+    // --- UPDATED: ROUND UP TIME VALIDATION ---
+    function validateTime(el) {
+        if (!el.value) return;
+        
+        const [h, m] = el.value.split(':').map(Number);
+        const totalMins = h * 60 + m;
+        // Use Math.ceil to round UP to the nearest interval
+        const roundedMins = Math.ceil(totalMins / 15) * 15;
+        
+        let newH = Math.floor(roundedMins / 60) % 24;
+        let newM = roundedMins % 60;
+        
+        // Handle overflow if something rounded up to exactly 24:00 (00:00)
+        if (Math.floor(roundedMins / 60) === 24) {
+            newH = 0;
+            newM = 0;
+        }
+        
+        const formatted = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+        
+        if (el.value !== formatted) {
+            el.value = formatted;
+        }
+    }
+
+    // --- BULK SANITIZER ---
+    function sanitizeAllTimes() {
+        document.querySelectorAll('.time-validation').forEach(el => validateTime(el));
+    }
+
+    function validateBreak(el) {
+        let val = parseInt(el.value);
+        if (isNaN(val) || val === 0) {
+            if (val === 0) el.value = "0"; 
+            else el.value = ""; 
+            return;
+        }
+        if (val > 0 && val < 30) val = 30;
+        if (val > 60) val = 60;
+        if (val % 15 !== 0) {
+            val = Math.round(val / 15) * 15;
+            if (val < 30) val = 30;
+            if (val > 60) val = 60;
+        }
+        el.value = val;
+    }
+
     function saveDraft() {
+        sanitizeAllTimes();
+
         const rows = [];
         document.querySelectorAll('#timesheetTable tbody tr').forEach(row => {
             rows.push({
@@ -370,8 +417,7 @@
         });
 
         const draftData = {
-            initials: document.getElementById('userInitials').value,
-            surname: document.getElementById('userSurname').value,
+            userName: document.getElementById('userName').value, 
             payroll: document.getElementById('payrollNumber').value,
             submissionDate: document.getElementById('submissionDate').value,
             signature: document.getElementById('claimant-type').value,
@@ -385,8 +431,13 @@
         if (!savedData) return;
 
         const data = JSON.parse(savedData);
-        document.getElementById('userInitials').value = data.initials || "";
-        document.getElementById('userSurname').value = data.surname || "";
+        
+        let loadedName = data.userName || "";
+        if (!loadedName && (data.initials || data.surname)) {
+            loadedName = [data.initials, data.surname].filter(Boolean).join(" ");
+        }
+        document.getElementById('userName').value = loadedName;
+
         document.getElementById('payrollNumber').value = data.payroll || "";
         document.getElementById('submissionDate').value = data.submissionDate || "";
         document.getElementById('claimant-type').value = data.signature || "";
@@ -412,12 +463,14 @@
     }
 
     function downloadPDF() {
-        const initials = document.getElementById('userInitials').value.trim();
-        const surname = document.getElementById('userSurname').value.trim();
+        sanitizeAllTimes();
+        calculate();
+
+        const userName = document.getElementById('userName').value.trim();
         const subDate = document.getElementById('submissionDate').value;
         const signature = document.getElementById('claimant-type').value.trim();
 
-        if (!initials || !surname || !subDate || !signature) {
+        if (!userName || !subDate || !signature) {
             alert("Please complete all required fields marked with an asterisk (*).");
             return;
         }
@@ -425,12 +478,10 @@
         const container = document.getElementById('content-to-export');
         const tsContainer = document.getElementById('ts-container');
         
-        // --- 1. ACTIVATE PRINT MODE ---
         tsContainer.classList.add('print-mode');
 
         const originalState = [];
 
-        // Prepare DOM for PDF
         container.querySelectorAll('input, select, textarea').forEach(el => {
             if (window.getComputedStyle(el).display === 'none') return;
             originalState.push({ element: el, display: el.style.display });
@@ -452,7 +503,6 @@
                 wrapper.classList.add('pdf-input-box');
                 if (el.style.width) wrapper.style.width = el.style.width;
                 
-                // Force Auth Section input fields to Grey
                 if (el.closest('.auth-section')) {
                     wrapper.style.backgroundColor = "#e0e0e0"; 
                 }
@@ -477,24 +527,22 @@
 
         document.querySelectorAll('.no-print-item').forEach(el => el.classList.add('no-export'));
 
+        const safeName = userName.replace(/[^a-z0-9]/gi, '_').replace(/__+/g, '_');
+
         const opt = {
             margin: [5, 5, 5, 5],
-            filename: `Timesheet_${surname}.pdf`,
+            filename: `Timesheet_${safeName}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        // Generate PDF
         html2pdf().set(opt).from(container).save().then(() => {
-            // Restore original state
             originalState.forEach(item => {
                 if (item.isTemporary) item.element.remove();
                 else item.element.style.display = item.display;
             });
             document.querySelectorAll('.no-export').forEach(el => el.classList.remove('no-export'));
-            
-            // --- 2. DEACTIVATE PRINT MODE ---
             tsContainer.classList.remove('print-mode');
         });
     }
@@ -509,10 +557,12 @@
         const newRow = table.insertRow();
         newRow.innerHTML = `
             <td><input type="date" class="row-date" oninput="saveDraft()"></td>
-            <td><input type="time" list="intervals" class="time-from" oninput="calculate(); saveDraft()"></td>
-            <td><input type="time" list="intervals" class="time-to" oninput="calculate(); saveDraft()"></td>
+            
+            <td><input type="time" list="intervals" step="900" class="time-from time-validation" onblur="validateTime(this); calculate(); saveDraft()"></td>
+            <td><input type="time" list="intervals" step="900" class="time-to time-validation" onblur="validateTime(this); calculate(); saveDraft()"></td>
+            
             <td><input type="checkbox" class="is-lead" onchange="calculate(); saveDraft()"></td>
-            <td><input type="number" class="break-mins" placeholder="0" oninput="calculate(); saveDraft()"></td>
+            <td><input type="number" class="break-mins" min="0" max="60" step="15" placeholder="0" onchange="validateBreak(this); calculate(); saveDraft()"></td>
             <td class="col-reason">
                 <select class="reason-select" onchange="toggleSpecify(this); saveDraft()">
                     <option value="" disabled selected>Select...</option>
@@ -543,6 +593,8 @@
     }
 
     function calculate() {
+        sanitizeAllTimes();
+
         let grandTotal = 0;
         document.querySelectorAll('#timesheetTable tbody tr').forEach(row => {
             const start = row.querySelector('.time-from').value;
@@ -561,5 +613,4 @@
     }
 </script>
 </body>
-
 </html>

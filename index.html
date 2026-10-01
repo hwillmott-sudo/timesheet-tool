@@ -307,7 +307,7 @@
                         <th class="col-time">To</th>
                         <th class="col-lead">Lead</th>
                         <th class="col-break">BREAK (MINS)</th>
-                        <th class="col-reason">Reason for Claim</th>
+                        <th class="col-reason">Reason for Claim*</th>
                         <th class="col-total-row">Total</th>
                         <th class="col-action no-print-item"></th>
                     </tr>
@@ -321,7 +321,7 @@
                         <td><input type="checkbox" class="is-lead" onchange="calculate(); saveDraft()"></td>
                         <td><input type="number" class="break-mins" min="0" max="60" step="15" placeholder="0" onchange="validateBreak(this); calculate(); saveDraft()"></td>
                         <td class="col-reason">
-                            <select class="reason-select" onchange="toggleSpecify(this); saveDraft()">
+                            <select class="reason-select" required onchange="toggleSpecify(this); saveDraft()">
                                 <option value="" disabled selected>Select...</option>
                                 <option value="GCSEs">GCSEs</option>
                                 <option value="Year 11 Mocks">Year 11 Mocks</option>
@@ -470,7 +470,20 @@
         const subDate = document.getElementById('submissionDate').value;
         const signature = document.getElementById('claimant-type').value.trim();
 
-        if (!userName || !subDate || !signature) {
+        // Check that all rows have a selected reason and a specification if 'Other' is chosen
+        let reasonsValid = true;
+        document.querySelectorAll('#timesheetTable tbody tr').forEach(row => {
+            const reasonSelect = row.querySelector('.reason-select');
+            const specifyBox = row.querySelector('.specify-box');
+            if (!reasonSelect.value) {
+                reasonsValid = false;
+            }
+            if (reasonSelect.value === 'Other' && !specifyBox.value.trim()) {
+                reasonsValid = false;
+            }
+        });
+
+        if (!userName || !subDate || !signature || !reasonsValid) {
             alert("Please complete all required fields marked with an asterisk (*).");
             return;
         }
@@ -549,7 +562,9 @@
 
     function toggleSpecify(selectElement) {
         const specifyBox = selectElement.parentElement.querySelector('.specify-box');
-        specifyBox.style.display = (selectElement.value === 'Other') ? 'block' : 'none';
+        const isOther = (selectElement.value === 'Other');
+        specifyBox.style.display = isOther ? 'block' : 'none';
+        specifyBox.required = isOther;
     }
 
     function addRow(data = null) {
@@ -564,7 +579,7 @@
             <td><input type="checkbox" class="is-lead" onchange="calculate(); saveDraft()"></td>
             <td><input type="number" class="break-mins" min="0" max="60" step="15" placeholder="0" onchange="validateBreak(this); calculate(); saveDraft()"></td>
             <td class="col-reason">
-                <select class="reason-select" onchange="toggleSpecify(this); saveDraft()">
+                <select class="reason-select" required onchange="toggleSpecify(this); saveDraft()">
                     <option value="" disabled selected>Select...</option>
                     <option value="GCSEs">GCSEs</option>
                     <option value="Year 11 Mocks">Year 11 Mocks</option>
@@ -588,7 +603,10 @@
             select.value = data.reason || "";
             const specify = newRow.querySelector('.specify-box');
             specify.value = data.specify || "";
-            if (data.reason === 'Other') specify.style.display = 'block';
+            if (data.reason === 'Other') {
+                specify.style.display = 'block';
+                specify.required = true;
+            }
         }
     }
 
@@ -613,5 +631,4 @@
     }
 </script>
 </body>
-
 </html>
